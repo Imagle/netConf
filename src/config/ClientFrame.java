@@ -16,6 +16,7 @@ import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 
+import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -25,7 +26,10 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeNode;
+import javax.swing.tree.TreePath;
 
 import config.mockDB.ConfigModel;
 import config.socket.ClientSocket;
@@ -33,18 +37,22 @@ import config.socket.ClientSocket;
 public class ClientFrame extends JFrame implements ActionListener{
 
 	private static final long serialVersionUID = 1L;
-	private JTextField jtf = new JTextField("10.108.161.103");
+	private JTextField jtf = new JTextField("127.0.0.1");
 	private JTextArea jta = new JTextArea();
 	private JButton button = new JButton("连接");
 	private JButton submitButton = new JButton("更新至服务器");
 	private JButton addButton = new JButton("新加组");
-	private JTable table = new JTable();
 	private JPanel panelAbove = null;
-	private DefaultMutableTreeNode  rootNode = new DefaultMutableTreeNode("DTS");
-	private DefaultTreeModel modelTree = new DefaultTreeModel(rootNode);
-	private JTree tree = new JTree(modelTree);
-	private JScrollPane treeView = new JScrollPane(tree);
+	
+	private JTable table = new JTable();
 	private JScrollPane jsp = new JScrollPane(table);
+	
+	private DefaultMutableTreeNode  rootNode = new DefaultMutableTreeNode("DTS");
+	private DefaultTreeModel modelTree = new DefaultTreeModel(rootNode, true);
+	private JTree tree = new JTree(modelTree);
+	private DefaultTreeCellRenderer render = new DefaultTreeCellRenderer();
+	private JScrollPane treeView = new JScrollPane(tree);
+	
 	private ClientSocket client = null;
 	private String command = null;
 
@@ -53,12 +61,12 @@ public class ClientFrame extends JFrame implements ActionListener{
 	private String DTS_CPP = null;
 	private String DTS_JAVA = null;
 	private String DTS_GCC = null;
-	private boolean isConnected = false;
+	private boolean isConnected = true;
 	private boolean isOpened = false;
 		
 	public static void main(String[] args) {
-		//new ClientFrame("F:\\Workspaces\\eclipse\\Test");
-		new ClientFrame(args[0]);
+		new ClientFrame("F:\\Workspaces\\eclipse\\Test");
+		//new ClientFrame(args[0]);
 	}
 
 	public ClientFrame(String filepath){
@@ -86,6 +94,12 @@ public class ClientFrame extends JFrame implements ActionListener{
 //		notify_panel.setOneTouchExpandable(true);		
 		
 		JSplitPane innerpanel = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, treeView, jsp);
+		
+		//当导出为jar包时,使用如下方式
+//		java.net.URL imgURL = getClass().getResource("/res/mdb.gif");
+//		render.setLeafIcon(new ImageIcon(imgURL));
+		render.setLeafIcon(new ImageIcon("res/mdb.gif"));
+		tree.setCellRenderer(render);
 		
 		tree.setShowsRootHandles(true);
 		innerpanel.setContinuousLayout(true);
@@ -225,7 +239,25 @@ public class ClientFrame extends JFrame implements ActionListener{
 		
 		subButton.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e) {
-				//String versions = version.getSelectedItem().toString();
+				String group_name = jtf.getText();
+				DefaultMutableTreeNode selectNode = (DefaultMutableTreeNode)tree.getLastSelectedPathComponent();
+				String selectNodeName = selectNode.getUserObject().toString();
+				if(selectNodeName.equals("DTS") || selectNode.isLeaf()){
+					JOptionPane.showConfirmDialog(null,"所选目录不能创建组,请在版本下建组","提示" ,  JOptionPane.CLOSED_OPTION);
+					jf.dispose();
+					return;
+				}
+				boolean flag = client.AddGroup(group_name);
+				if( flag ){
+					//int response = JOptionPane.showConfirmDialog(null,"新增组成功","提示" ,  JOptionPane.CLOSED_OPTION); 
+					DefaultMutableTreeNode newChild = new DefaultMutableTreeNode(group_name, false);
+					modelTree.insertNodeInto(newChild, selectNode, selectNode.getChildCount());
+					TreeNode[] nodes = modelTree.getPathToRoot(newChild);
+					TreePath path = new TreePath(newChild);
+					tree.scrollPathToVisible(path);
+				}
+				jf.dispose();
+				/*
 				String group_name = jtf.getText();
 				if(group_name == null || group_name.isEmpty() || group_name.contains("\\") || group_name.contains("/")){
 					JOptionPane.showConfirmDialog(null,"组名不能为空，不要在名字中出现'\\'或者'/'","提示" ,  JOptionPane.CLOSED_OPTION);
@@ -237,15 +269,13 @@ public class ClientFrame extends JFrame implements ActionListener{
 					
 					File[][] files = client.getFilesList();
 					createNodes(rootNode, files);
-					//modelTree.reload();
-					treeView.repaint();
 					if(response ==0)
 						jf.dispose();
 				}else{
-					//int response = 
 					JOptionPane.showConfirmDialog(null, "新增组失败，\n检查是否该组名已经存在","提示",  JOptionPane.CLOSED_OPTION);
 					return;
 				}
+				*/
 			}
 		});
 	}
